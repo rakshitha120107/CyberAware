@@ -1,0 +1,211 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberAware</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #eef2ff;
+            margin: 0;
+            padding: 30px 20px;
+        }
+
+        .container {
+            max-width: 650px;
+            margin: 30px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px #0002;
+        }
+
+        h1 { color: #3730a3; }
+
+        select, textarea, button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 12px;
+            border-radius: 7px;
+            font-size: 15px;
+        }
+
+        select, textarea {
+            border: 1px solid #ccc;
+        }
+
+        textarea {
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        button {
+            background: #4338ca;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        h2 { margin-top: 30px; }
+
+        .report {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 12px;
+            overflow-wrap: anywhere;
+        }
+
+        .report p { margin: 8px 0; }
+
+        #message { color: #3730a3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ CyberAware</h1>
+        <p>Cybersecurity Incident Reporting Portal</p>
+
+        <form id="reportForm">
+            <label for="incidentType">Incident Type</label>
+            <select id="incidentType" required>
+                <option value="">-- Select Incident --</option>
+                <option value="Phishing">Phishing</option>
+                <option value="Suspicious Message">
+                    Suspicious Message
+                </option>
+                <option value="Account Security">
+                    Account Security
+                </option>
+                <option value="Other">Other</option>
+            </select>
+
+            <label for="description">Incident Description</label>
+            <textarea
+                id="description"
+                placeholder="Describe a fictional incident..."
+                required
+            ></textarea>
+
+            <button type="submit">Submit Report</button>
+        </form>
+
+        <p id="message" role="status"></p>
+
+        <h2>Submitted Reports</h2>
+        <button id="refreshBtn" type="button">
+            Refresh Reports
+        </button>
+
+        <div id="reportList"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById("reportForm");
+        const message = document.getElementById("message");
+        const reportList = document.getElementById("reportList");
+
+        async function loadReports() {
+            try {
+                const response = await fetch("/reports");
+
+                if (!response.ok) {
+                    throw new Error("Unable to fetch reports");
+                }
+
+                const reports = await response.json();
+                reportList.replaceChildren();
+
+                if (reports.length === 0) {
+                    reportList.textContent =
+                        "No reports submitted yet.";
+                    return;
+                }
+
+                reports.forEach(report => {
+                    const card = document.createElement("div");
+                    card.className = "report";
+
+                    const heading = document.createElement("h3");
+                    heading.textContent =
+                        `Report #${report.id}: ${report.incidentType}`;
+
+                    const description = document.createElement("p");
+                    description.textContent = report.description;
+
+                    const status = document.createElement("p");
+                    status.textContent =
+                        `Status: ${report.status}`;
+
+                    const date = document.createElement("small");
+                    date.textContent =
+                        `Submitted: ${new Date(report.date).toLocaleString()}`;
+
+                    card.append(
+                        heading,
+                        description,
+                        status,
+                        date
+                    );
+
+                    reportList.appendChild(card);
+                });
+
+            } catch (error) {
+                reportList.textContent =
+                    "Could not load reports.";
+            }
+        }
+
+        form.addEventListener("submit", async event => {
+            event.preventDefault();
+
+            const incidentType =
+                document.getElementById("incidentType").value;
+
+            const description =
+                document.getElementById("description").value.trim();
+
+            if (!incidentType || !description) return;
+
+            try {
+                const response = await fetch("/report", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        incidentType,
+                        description
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.error || "Submission failed"
+                    );
+                }
+
+                message.textContent = data.message;
+                form.reset();
+                await loadReports();
+
+            } catch (error) {
+                message.textContent = error.message;
+            }
+        });
+
+        document.getElementById("refreshBtn")
+            .addEventListener("click", loadReports);
+
+        loadReports();
+    </script>
+</body>
+</html>
